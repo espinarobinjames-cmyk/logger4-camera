@@ -21,7 +21,7 @@
     .branch-line{display:inline-flex;margin-top:6px;padding:5px 8px;border-radius:999px;background:#e9f3f5;color:var(--brand);font-size:11px;font-weight:800;border:1px solid #cfe0e5}
     .camera-card{background:#08131b;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #172834;position:relative}
     .video-wrap{position:relative;width:100%;height:min(62vh,640px);min-height:360px;background:#000;overflow:hidden}
-    video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block;transform:scaleX(-1);background:#000}
+    video{position:absolute;left:50%;top:50%;width:auto;height:100%;min-width:100%;min-height:100%;max-width:none;max-height:none;display:block;background:#000;transform:translate(-50%,-50%) scaleX(-1);transform-origin:center center}
     .camera-state{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.58);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700}
     .camera-branch{position:absolute;right:10px;top:10px;background:rgba(15,76,92,.86);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .perm{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;text-align:center;background:#071118;color:#fff}
@@ -59,7 +59,7 @@
       <div class="title">Attendance Camera</div>
       <div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div>
     </div>
-    <div class="badge" id="cameraBadge">Camera</div>
+    <div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v58</div></div>
   </div>
 
   <div class="camera-card">
@@ -152,10 +152,7 @@ async function startCamera(manual){
     video.srcObject=STREAM;
     video.onloadedmetadata=()=>{
       try{video.play()}catch(_e){}
-      video.style.width='100%';
-      video.style.height='100%';
-      video.style.objectFit='cover';
-      video.style.objectPosition='center center';
+
     };
     q('cameraState').textContent='Camera ready';
     q('cameraBadge').textContent='Ready';
