@@ -20,8 +20,8 @@
     .badge{font-size:11px;font-weight:800;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;color:var(--brand)}
     .branch-line{display:inline-flex;margin-top:6px;padding:5px 8px;border-radius:999px;background:#e9f3f5;color:var(--brand);font-size:11px;font-weight:800;border:1px solid #cfe0e5}
     .camera-card{background:#08131b;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #172834;position:relative}
-    .video-wrap{position:relative;aspect-ratio:4/5;max-height:58vh;background:#000}
-    video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+    .video-wrap{position:relative;width:100%;height:min(62vh,640px);min-height:360px;background:#000;overflow:hidden}
+    video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;display:block;transform:scaleX(-1);background:#000}
     .camera-state{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.58);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700}
     .camera-branch{position:absolute;right:10px;top:10px;background:rgba(15,76,92,.86);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .perm{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;text-align:center;background:#071118;color:#fff}
@@ -45,7 +45,7 @@
     .loading-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;box-shadow:var(--shadow);font-weight:700}
     canvas{display:none}
     @media(max-width:560px){
-      .app{padding:8px}.camera-card,.panel{border-radius:14px}.video-wrap{max-height:52vh}.buttons button{min-height:52px;font-size:15px}
+      .app{padding:8px}.camera-card,.panel{border-radius:14px}.video-wrap{height:54vh;min-height:300px;max-height:560px}.buttons button{min-height:52px;font-size:15px}
       .title{font-size:16px}.id-row{grid-template-columns:1fr 86px}.check{min-width:0}
     }
   </style>
@@ -147,8 +147,16 @@ async function startCamera(manual){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Camera API is not available in this browser.');
     if(STREAM)STREAM.getTracks().forEach(t=>t.stop());
-    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:960}},audio:false});
-    q('video').srcObject=STREAM;
+    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
+    const video=q('video');
+    video.srcObject=STREAM;
+    video.onloadedmetadata=()=>{
+      try{video.play()}catch(_e){}
+      video.style.width='100%';
+      video.style.height='100%';
+      video.style.objectFit='cover';
+      video.style.objectPosition='center center';
+    };
     q('cameraState').textContent='Camera ready';
     q('cameraBadge').textContent='Ready';
     setMsg('Camera ready. Enter Employee ID.','ok');
