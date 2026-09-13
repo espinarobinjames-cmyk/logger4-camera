@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Attendance Camera</title>
+  <style>
+    :root{
+      --bg:#f4f7fb;--card:#fff;--text:#18212f;--muted:#667085;--line:#d9e1ea;
+      --brand:#0f4c5c;--brand2:#123f4d;--in:#16794d;--out:#b5473a;--soft:#eef5f7;
+      --disabled:#e5e9ef;--disabledText:#98a2b3;--ok:#14804a;--bad:#b42318;--warn:#b26a00;
+      --shadow:0 12px 32px rgba(15,23,42,.10)
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    body{display:flex;justify-content:center}
+    .app{width:min(560px,100%);padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+    .head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .brand{min-width:0}.title{font-size:18px;font-weight:800}.sub{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .badge{font-size:11px;font-weight:800;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;color:var(--brand)}
+    .camera-card{background:#08131b;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #172834;position:relative}
+    .video-wrap{position:relative;aspect-ratio:4/5;max-height:58vh;background:#000}
+    video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+    .camera-state{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.58);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700}
+    .perm{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;text-align:center;background:#071118;color:#fff}
+    .perm-card{max-width:360px}.perm-title{font-size:18px;font-weight:800}.perm-text{font-size:12px;color:#cbd5e1;line-height:1.5;margin-top:7px}
+    .perm button{margin-top:12px}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;margin-top:10px;box-shadow:var(--shadow)}
+    label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:5px}
+    .id-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+    input{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff;font-size:16px;outline:none}
+    input:focus{border-color:#8ab0bb;box-shadow:0 0 0 3px rgba(15,76,92,.08)}
+    button{border:0;border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer}
+    .check{background:var(--brand);color:#fff;min-width:92px}.check:hover{background:var(--brand2)}
+    .employee{display:none;margin-top:10px;padding:11px;border-radius:12px;background:#f8fafc;border:1px solid var(--line)}
+    .employee b{font-size:15px}.meta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}.state{font-size:11px;margin-top:6px;font-weight:700}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+    .in{background:var(--in);color:#fff}.out{background:var(--out);color:#fff}
+    button:disabled{background:var(--disabled)!important;color:var(--disabledText)!important;cursor:not-allowed;box-shadow:none}
+    .msg{min-height:19px;font-size:12px;line-height:1.4;margin-top:10px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+    .hint{font-size:10px;color:var(--muted);margin-top:8px}
+    .loading{position:fixed;inset:0;background:rgba(255,255,255,.72);display:none;align-items:center;justify-content:center;z-index:50}
+    .loading-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;box-shadow:var(--shadow);font-weight:700}
+    canvas{display:none}
+    @media(max-width:560px){
+      .app{padding:8px}.camera-card,.panel{border-radius:14px}.video-wrap{max-height:52vh}.buttons button{min-height:52px;font-size:15px}
+      .title{font-size:16px}.id-row{grid-template-columns:1fr 86px}.check{min-width:0}
+    }
+  </style>
+</head>
+<body>
+<div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
+
+<div class="app">
+  <div class="head">
+    <div class="brand">
+      <div class="title">Attendance Camera</div>
+      <div class="sub" id="loggerName">Logger 4</div>
+    </div>
+    <div class="badge" id="cameraBadge">Camera</div>
+  </div>
+
+  <div class="camera-card">
+    <div class="video-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="camera-state" id="cameraState">Waiting for camera…</div>
+      <div class="perm" id="permissionPanel">
+        <div class="perm-card">
+          <div class="perm-title">Camera permission needed</div>
+          <div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div>
+          <button class="check" onclick="startCamera(true)">Allow Camera</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <div class="panel">
+    <label>Employee ID</label>
+    <div class="id-row">
+      <input id="employeeId" autocomplete="off" inputmode="text" placeholder="Enter or scan Employee ID" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupEmployee()}">
+      <button class="check" onclick="lookupEmployee()">Check</button>
+    </div>
+
+    <div class="employee" id="employeeCard">
+      <b id="employeeName"></b>
+      <div class="meta" id="employeeMeta"></div>
+      <div class="state" id="attendanceState"></div>
+    </div>
+
+    <div class="buttons">
+      <button id="timeInBtn" class="in" disabled onclick="submitPunch('IN')">TIME IN</button>
+      <button id="timeOutBtn" class="out" disabled onclick="submitPunch('OUT')">TIME OUT</button>
+    </div>
+
+    <div class="msg" id="msg"></div>
+    <div class="hint">The photo is captured only after you click the enabled TIME IN or TIME OUT button.</div>
+  </div>
+</div>
+
+<script>
+const PARENT_ORIGIN='*';
+let STREAM=null,CURRENT=null,BUSY=false;
+const requests=new Map();
+
+function q(id){return document.getElementById(id)}
+function setMsg(t,type){q('msg').textContent=t||'';q('msg').className='msg '+(type||'')}
+function showLoading(t){q('loadingText').textContent=t||'Processing…';q('loading').style.display='flex'}
+function hideLoading(){q('loading').style.display='none'}
+function resetEmployee(){
+  CURRENT=null;q('employeeCard').style.display='none';
+  q('timeInBtn').disabled=true;q('timeOutBtn').disabled=true;
+}
+function requestParent(type,payload){
+  return new Promise((resolve,reject)=>{
+    const requestId=Date.now()+'-'+Math.random().toString(36).slice(2);
+    const timer=setTimeout(()=>{requests.delete(requestId);reject(new Error('Request timed out. Please try again.'))},15000);
+    requests.set(requestId,{resolve,reject,timer});
+    if(!window.opener){clearTimeout(timer);requests.delete(requestId);reject(new Error('Attendance logger window is not available.'));return}
+    window.opener.postMessage({type,requestId,...payload},PARENT_ORIGIN);
+  });
+}
+
+window.addEventListener('message',event=>{
+  const m=event.data||{};
+  if(m.type==='LOGGER_CONTEXT'){q('loggerName').textContent=m.loggerName||'Logger 4';return}
+  if(m.type==='LOOKUP_RESULT'||m.type==='SUBMIT_RESULT'){
+    const p=requests.get(m.requestId);if(!p)return;
+    clearTimeout(p.timer);requests.delete(m.requestId);
+    if(m.ok)p.resolve(m.result||m);else p.reject(new Error(m.message||'Request failed.'));
+  }
+});
+
+async function startCamera(manual){
+  q('permissionPanel').style.display='none';
+  q('cameraState').textContent='Starting camera…';
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Camera API is not available in this browser.');
+    if(STREAM)STREAM.getTracks().forEach(t=>t.stop());
+    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:960}},audio:false});
+    q('video').srcObject=STREAM;
+    q('cameraState').textContent='Camera ready';
+    q('cameraBadge').textContent='Ready';
+    setMsg('Camera ready. Enter Employee ID.','ok');
+  }catch(e){
+    q('cameraState').textContent='Camera unavailable';
+    q('cameraBadge').textContent='Permission';
+    q('permissionPanel').style.display='flex';
+    let text='Tap “Allow Camera” and approve the browser camera permission.';
+    if(e&&e.name==='NotAllowedError')text='Camera permission is blocked. Click the lock/camera icon in the address bar, allow Camera, then tap “Allow Camera” again.';
+    else if(e&&e.name==='NotFoundError')text='No camera was detected on this device.';
+    q('permissionText').textContent=text;
+    setMsg(e.message||'Camera permission is required.','bad');
+  }
+}
+
+async function lookupEmployee(){
+  if(BUSY)return;
+  const id=q('employeeId').value.trim();
+  resetEmployee();
+  if(!id)return setMsg('Enter or scan an Employee ID.','bad');
+
+  showLoading('Checking attendance…');
+  try{
+    const r=await requestParent('LOOKUP_EMPLOYEE',{employeeId:id});
+    CURRENT=r;
+    q('employeeCard').style.display='block';
+    q('employeeName').textContent=r.employee.employeeName;
+    q('employeeMeta').textContent=[r.employee.employeeId,r.employee.branch,r.employee.position].filter(Boolean).join(' · ');
+    q('attendanceState').textContent=r.message||'';
+    q('timeInBtn').disabled=!r.canTimeIn;
+    q('timeOutBtn').disabled=!r.canTimeOut;
+
+    if(r.requiredPunch==='OUT')setMsg('TIME OUT required first. Open TIME IN: '+(r.openWorkDate||'')+' '+(r.openTimeIn||''),'warn');
+    else if(r.requiredPunch==='COMPLETE')setMsg('Attendance for today is already complete.','ok');
+    else setMsg('Ready for TIME IN.','ok');
+  }catch(e){
+    setMsg(e.message||String(e),'bad');
+  }
+  hideLoading();
+}
+
+function capturePhoto(){
+  if(!STREAM)throw new Error('Camera is not ready.');
+  const v=q('video'),c=q('canvas');
+  const vw=v.videoWidth||720,vh=v.videoHeight||960,max=560;
+  const scale=Math.min(1,max/vw,max/vh);
+  c.width=Math.max(1,Math.round(vw*scale));c.height=Math.max(1,Math.round(vh*scale));
+  const ctx=c.getContext('2d',{alpha:false});
+  ctx.save();ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0,c.width,c.height);ctx.restore();
+  return c.toDataURL('image/jpeg',.56);
+}
+
+async function submitPunch(punch){
+  if(BUSY||!CURRENT)return;
+  if(punch==='IN'&&!CURRENT.canTimeIn)return;
+  if(punch==='OUT'&&!CURRENT.canTimeOut)return;
+
+  BUSY=true;
+  q('timeInBtn').disabled=true;q('timeOutBtn').disabled=true;
+  showLoading('Capturing and saving '+punch+'…');
+  try{
+    const dataUrl=capturePhoto();
+    const r=await requestParent('SUBMIT_PUNCH',{
+      employeeId:CURRENT.employee.employeeId,
+      punch,
+      dataUrl
+    });
+    setMsg('Saved '+punch+' · '+r.employeeName+' · '+r.timestamp,'ok');
+    try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(punch==='IN'?'Welcome back':'See you again'))}catch(e){}
+    q('employeeId').value='';resetEmployee();q('employeeId').focus();
+  }catch(e){
+    setMsg(e.message||String(e),'bad');
+    try{await lookupEmployee()}catch(_e){}
+  }finally{
+    BUSY=false;hideLoading();
+  }
+}
+
+window.addEventListener('load',()=>{
+  if(window.opener)window.opener.postMessage({type:'CAMERA_READY'},PARENT_ORIGIN);
+  startCamera(false);
+  q('employeeId').focus();
+});
+window.addEventListener('beforeunload',()=>{try{STREAM?.getTracks().forEach(t=>t.stop())}catch(e){}});
+</script>
+</body>
+</html>
