@@ -26,7 +26,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v62</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v63</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -104,6 +104,7 @@ async function processAttendance(){
     const lookupStarted=performance.now();
     const lookup=await requestParent('LOOKUP_EMPLOYEE',{employeeId:id});
     const lookupTotalMs=Math.round(performance.now()-lookupStarted);
+    const lookupSource=lookup&&lookup.performance&&lookup.performance.localCache?'LOCAL CACHE':'SERVER';
 
     CURRENT=lookup;
     q('employeeCard').style.display='block';
@@ -114,7 +115,7 @@ async function processAttendance(){
     const punch=lookup.requiredPunch||lookup.suggestedPunch||'';
     if(punch==='COMPLETE'){
       setMsg('Attendance for today is already complete.','ok');
-      q('perfDiag').textContent='DIAGNOSTIC · Lookup total '+lookupTotalMs+'ms · Backend '+Number(lookup.performance?.totalBackendMs||0)+'ms';
+      q('perfDiag').textContent='DIAGNOSTIC · Lookup '+lookupTotalMs+'ms ('+lookupSource+') · Backend '+Number(lookup.performance?.totalBackendMs||0)+'ms';
       q('employeeId').value='';
       setTimeout(()=>resetEmployee(),900);
       return;
@@ -137,7 +138,7 @@ async function processAttendance(){
     const bp=r.performance||{},cp=r.clientPerformance||{};
     q('perfDiag').textContent=[
       'DIAGNOSTIC',
-      'Lookup '+lookupTotalMs+'ms',
+      'Lookup '+lookupTotalMs+'ms ('+lookupSource+')',
       'Capture '+captureMs+'ms',
       'Watermark '+Number(cp.watermarkMs||0)+'ms',
       'Drive '+Number(bp.photoDriveSaveMs||0)+'ms',
