@@ -26,7 +26,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v63</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v64</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -141,6 +141,11 @@ async function processAttendance(){
       'Lookup '+lookupTotalMs+'ms ('+lookupSource+')',
       'Capture '+captureMs+'ms',
       'Watermark '+Number(cp.watermarkMs||0)+'ms',
+      'Auth '+Number(bp.deviceAuthMs||0)+'ms',
+      'Employee '+Number(bp.employeeLookupMs||0)+'ms',
+      'Lock '+Number(bp.lockWaitMs||0)+'ms',
+      'State '+Number(bp.attendanceStateCheckMs||0)+'ms',
+      'Folder '+Number(bp.photoFolderMs||0)+'ms',
       'Drive '+Number(bp.photoDriveSaveMs||0)+'ms',
       'Attendance '+Number(bp.attendanceSaveMs||0)+'ms',
       'Calc '+Number(bp.loggerCalculationMs||0)+'ms',
@@ -148,6 +153,9 @@ async function processAttendance(){
       'Leave '+Number(bp.loggerLeaveConflictMs||0)+'ms',
       'OT '+Number(bp.loggerOvertimeSyncMs||0)+'ms',
       'Raw '+Number(bp.rawLogWriteMs||0)+'ms',
+      'Device '+Number(bp.deviceHeartbeatMs||0)+'ms',
+      'Audit '+Number(bp.auditWriteMs||0)+'ms',
+      'Other '+Number(bp.unaccountedBackendMs||0)+'ms',
       'Backend '+Number(bp.totalBackendMs||0)+'ms',
       'Server round-trip '+Number(cp.serverRoundTripMs||submitTotalMs)+'ms',
       'TOTAL '+totalMs+'ms'
