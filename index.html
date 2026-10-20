@@ -26,7 +26,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v59</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v60</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -50,7 +50,7 @@ function setInputBusy_(busy){q('employeeId').disabled=!!busy;q('processBtn').dis
 function requestParent(type,payload){
   return new Promise((resolve,reject)=>{
     const requestId=Date.now()+'-'+Math.random().toString(36).slice(2);
-    const timer=setTimeout(()=>{requests.delete(requestId);reject(new Error('Request timed out. Please try again.'))},15000);
+    const timer=setTimeout(()=>{requests.delete(requestId);reject(new Error('Saving is taking longer than expected. Please check the attendance list before trying again.'))},35000);
     requests.set(requestId,{resolve,reject,timer});
     if(!window.opener){clearTimeout(timer);requests.delete(requestId);reject(new Error('Attendance logger window is not available.'));return}
     window.opener.postMessage({type,requestId,...payload},PARENT_ORIGIN);
