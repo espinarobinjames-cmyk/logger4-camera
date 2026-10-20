@@ -26,7 +26,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v60</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v61</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -34,6 +34,7 @@
     <div class="id-row"><input id="employeeId" autocomplete="off" inputmode="text" placeholder="Enter or scan Employee ID" onkeydown="if(event.key==='Enter'){event.preventDefault();processAttendance()}"><button class="check" id="processBtn" onclick="processAttendance()">Enter</button></div>
     <div class="employee" id="employeeCard"><b id="employeeName"></b><div class="meta" id="employeeMeta"></div><div class="state" id="attendanceState"></div></div>
     <div class="msg" id="msg"></div>
+    <div class="hint" id="perfDiag" style="margin-top:5px;line-height:1.5"></div>
     <div class="hint">Enter or scan Employee ID, then press Enter. TIME IN / TIME OUT is selected automatically.</div>
   </div>
 </div>
@@ -92,27 +93,75 @@ function capturePhoto(){
 }
 async function processAttendance(){
   if(BUSY)return;
-  const id=q('employeeId').value.trim();resetEmployee();
+  const fullStarted=performance.now();
+  const id=q('employeeId').value.trim();
+  resetEmployee();
+  q('perfDiag').textContent='';
   if(!id)return setMsg('Enter or scan an Employee ID.','bad');
+
   BUSY=true;setInputBusy_(true);showLoading('Checking attendance…');
   try{
+    const lookupStarted=performance.now();
     const lookup=await requestParent('LOOKUP_EMPLOYEE',{employeeId:id});
-    CURRENT=lookup;q('employeeCard').style.display='block';q('employeeName').textContent=lookup.employee.employeeName;
+    const lookupTotalMs=Math.round(performance.now()-lookupStarted);
+
+    CURRENT=lookup;
+    q('employeeCard').style.display='block';
+    q('employeeName').textContent=lookup.employee.employeeName;
     q('employeeMeta').textContent=[lookup.employee.employeeId,lookup.employee.branch,lookup.employee.position].filter(Boolean).join(' · ');
     q('attendanceState').textContent=lookup.message||'';
+
     const punch=lookup.requiredPunch||lookup.suggestedPunch||'';
-    if(punch==='COMPLETE'){setMsg('Attendance for today is already complete.','ok');q('employeeId').value='';setTimeout(()=>resetEmployee(),900);return}
+    if(punch==='COMPLETE'){
+      setMsg('Attendance for today is already complete.','ok');
+      q('perfDiag').textContent='DIAGNOSTIC · Lookup total '+lookupTotalMs+'ms · Backend '+Number(lookup.performance?.totalBackendMs||0)+'ms';
+      q('employeeId').value='';
+      setTimeout(()=>resetEmployee(),900);
+      return;
+    }
     if(punch!=='IN'&&punch!=='OUT')throw new Error('Unable to determine TIME IN / TIME OUT.');
+
     showLoading('Capturing and saving '+punch+'…');
+    const captureStarted=performance.now();
     const dataUrl=capturePhoto();
+    const captureMs=Math.round(performance.now()-captureStarted);
+
+    const submitStarted=performance.now();
     const r=await requestParent('SUBMIT_PUNCH',{employeeId:lookup.employee.employeeId,punch,dataUrl});
+    const submitTotalMs=Math.round(performance.now()-submitStarted);
+    const totalMs=Math.round(performance.now()-fullStarted);
+
     setMsg('✓ '+punch+' RECORDED · '+r.employeeName+' · '+r.timestamp,'ok');
     q('attendanceState').textContent=punch==='IN'?'TIME IN recorded successfully.':'TIME OUT recorded successfully.';
-    try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(punch==='IN'?'Time in recorded':'Time out recorded'))}catch(e){}
-    q('employeeId').value='';setTimeout(()=>resetEmployee(),900);
-  }catch(e){setMsg(e.message||String(e),'bad')}
-  finally{BUSY=false;setInputBusy_(false);hideLoading();q('employeeId').focus()}
+
+    const bp=r.performance||{},cp=r.clientPerformance||{};
+    q('perfDiag').textContent=[
+      'DIAGNOSTIC',
+      'Lookup '+lookupTotalMs+'ms',
+      'Capture '+captureMs+'ms',
+      'Watermark '+Number(cp.watermarkMs||0)+'ms',
+      'Drive '+Number(bp.photoDriveSaveMs||0)+'ms',
+      'Attendance '+Number(bp.attendanceSaveMs||0)+'ms',
+      'Raw '+Number(bp.rawLogWriteMs||0)+'ms',
+      'Backend '+Number(bp.totalBackendMs||0)+'ms',
+      'Server round-trip '+Number(cp.serverRoundTripMs||submitTotalMs)+'ms',
+      'TOTAL '+totalMs+'ms'
+    ].join(' · ');
+
+    try{
+      speechSynthesis.cancel();
+      speechSynthesis.speak(new SpeechSynthesisUtterance(punch==='IN'?'Time in recorded':'Time out recorded'));
+    }catch(e){}
+
+    q('employeeId').value='';
+    setTimeout(()=>resetEmployee(),900);
+  }catch(e){
+    setMsg(e.message||String(e),'bad');
+  }finally{
+    BUSY=false;setInputBusy_(false);hideLoading();q('employeeId').focus();
+  }
 }
+
 window.addEventListener('load',()=>{if(window.opener)window.opener.postMessage({type:'CAMERA_READY'},PARENT_ORIGIN);startCamera(false);q('employeeId').focus()});
 window.addEventListener('beforeunload',()=>{try{STREAM?.getTracks().forEach(t=>t.stop())}catch(e){}});
 </script>
