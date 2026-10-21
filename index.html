@@ -15,6 +15,23 @@
     .camera-state{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.58);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:700}.camera-branch{position:absolute;right:10px;top:10px;background:rgba(15,76,92,.86);color:#fff;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .perm{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;text-align:center;background:#071118;color:#fff}.perm-card{max-width:360px}.perm-title{font-size:18px;font-weight:800}.perm-text{font-size:12px;color:#cbd5e1;line-height:1.5;margin-top:7px}.perm button{margin-top:12px}
     .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;margin-top:10px;box-shadow:var(--shadow)}label{display:block;font-size:11px;font-weight:800;color:#475467;margin-bottom:5px}.id-row{display:grid;grid-template-columns:1fr auto;gap:8px}.scan-row{display:flex;gap:8px;margin-top:8px}.scan-btn{display:none;flex:1;background:#eef6f8;color:var(--brand);border:1px solid #cfe0e5}.scan-btn.show{display:block}
+    .scan-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:6}
+    .scan-overlay.show{display:flex}
+    .scan-frame{position:relative;width:min(76%,360px);aspect-ratio:1.45/1;border:2px solid rgba(255,255,255,.92);border-radius:16px;box-shadow:0 0 0 999px rgba(15,23,42,.18)}
+    .scan-frame:before,.scan-frame:after{content:'';position:absolute;width:36px;height:36px;border-color:#fff}
+    .scan-frame:before{left:-3px;top:-3px;border-left:4px solid;border-top:4px solid;border-radius:12px 0 0 0}
+    .scan-frame:after{right:-3px;bottom:-3px;border-right:4px solid;border-bottom:4px solid;border-radius:0 0 12px 0}
+    .scan-line{position:absolute;left:7%;right:7%;height:3px;top:12%;background:#fff;border-radius:999px;box-shadow:0 0 10px rgba(255,255,255,.8);animation:scanSweep 1.35s ease-in-out infinite alternate}
+    .scan-caption{position:absolute;left:50%;bottom:-42px;transform:translateX(-50%);white-space:nowrap;color:#fff;font-size:12px;font-weight:800;text-shadow:0 2px 5px rgba(0,0,0,.45)}
+    @keyframes scanSweep{from{top:12%}to{top:84%}}
+    .scan-success{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,118,71,.92);z-index:8;padding:18px;text-align:center}
+    .scan-success.show{display:flex}
+    .scan-success-card{color:#fff}
+    .scan-success-icon{font-size:58px;line-height:1;margin-bottom:10px}
+    .scan-success-title{font-size:28px;font-weight:900;letter-spacing:.02em}
+    .scan-success-name{font-size:20px;font-weight:800;margin-top:8px}
+    .scan-success-time{font-size:14px;margin-top:6px;opacity:.95}
+    @media (prefers-reduced-motion:reduce){.scan-line{animation:none;top:50%}}
     input{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff;font-size:16px;outline:none}input:focus{border-color:#8ab0bb;box-shadow:0 0 0 3px rgba(15,76,92,.08)}
     button{border:0;border-radius:12px;padding:12px 14px;font-weight:800;cursor:pointer}.check{background:var(--brand);color:#fff;min-width:92px}.check:hover{background:var(--brand2)}
     .employee{display:none;margin-top:10px;padding:11px;border-radius:12px;background:#f8fafc;border:1px solid var(--line)}.employee b{font-size:15px}.meta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}.state{font-size:11px;margin-top:6px;font-weight:700}
@@ -26,8 +43,8 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v65</div></div></div>
-  <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v66</div></div></div>
+  <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="scan-overlay" id="scanOverlay"><div class="scan-frame"><div class="scan-line"></div><div class="scan-caption">I-center ang QR / Barcode sa loob ng box</div></div></div><div class="scan-success" id="scanSuccess"><div class="scan-success-card"><div class="scan-success-icon">✓</div><div class="scan-success-title" id="scanSuccessTitle">TIME IN RECORDED</div><div class="scan-success-name" id="scanSuccessName">Employee</div><div class="scan-success-time" id="scanSuccessTime"></div></div></div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
     <label>Employee ID</label>
@@ -42,18 +59,41 @@
 <script>
 const PARENT_ORIGIN='*';
 let STREAM=null,CURRENT=null,BUSY=false;
-let CAMERA_REQUIRED=true,MANUAL_ID_ALLOWED=true,SCANNER_ALLOWED=false,SCANNER_ONLY_REQUEST=false,SCANNING=false,SCAN_DETECTOR=null,SCAN_RAF=0;
+let CAMERA_REQUIRED=true,MANUAL_ID_ALLOWED=true,SCANNER_ALLOWED=false,SCANNER_ONLY_REQUEST=false,SCANNING=false,SCAN_DETECTOR=null,SCAN_RAF=0,SCAN_COOLDOWN=false,SCAN_SUCCESS_TIMER=0;
 try{SCANNER_ONLY_REQUEST=new URLSearchParams(location.search).get('scanner')==='1'}catch(_e){}
 const requests=new Map();
 function q(id){return document.getElementById(id)}
 function setMsg(t,type){q('msg').textContent=t||'';q('msg').className='msg '+(type||'')}
 function showLoading(t){q('loadingText').textContent=t||'Processing…';q('loading').style.display='flex'}
 function hideLoading(){q('loading').style.display='none'}
+function setScanOverlay_(show){const el=q('scanOverlay');if(el)el.classList.toggle('show',!!show)}
+function hideScanSuccess_(){
+  if(SCAN_SUCCESS_TIMER){clearTimeout(SCAN_SUCCESS_TIMER);SCAN_SUCCESS_TIMER=0}
+  const el=q('scanSuccess');if(el)el.classList.remove('show')
+}
+function showScanSuccess_(r){
+  SCAN_COOLDOWN=true;
+  stopCodeScanner_();
+  setScanOverlay_(false);
+  q('scanSuccessTitle').textContent=(r.punch==='OUT'?'TIME OUT':'TIME IN')+' RECORDED';
+  q('scanSuccessName').textContent=r.employeeName||r.employeeId||'Employee';
+  q('scanSuccessTime').textContent=r.timestamp||'';
+  q('scanSuccess').classList.add('show');
+  if(SCAN_SUCCESS_TIMER)clearTimeout(SCAN_SUCCESS_TIMER);
+  SCAN_SUCCESS_TIMER=setTimeout(()=>{
+    hideScanSuccess_();
+    SCAN_COOLDOWN=false;
+    q('employeeId').value='';
+    resetEmployee();
+    setMsg('Ready to scan the next employee.','ok');
+    if(SCANNER_ONLY_REQUEST&&SCANNER_ALLOWED&&!BUSY)startCodeScanner();
+  },3000);
+}
 function resetEmployee(){CURRENT=null;q('employeeCard').style.display='none'}
 function setInputBusy_(busy){
   q('employeeId').disabled=!!busy||!MANUAL_ID_ALLOWED;
   q('processBtn').disabled=!!busy||!MANUAL_ID_ALLOWED;
-  q('scanBtn').disabled=!!busy||!SCANNER_ALLOWED;
+  q('scanBtn').disabled=!!busy||SCAN_COOLDOWN||!SCANNER_ALLOWED;
 }
 function requestParent(type,payload){
   return new Promise((resolve,reject)=>{
@@ -115,14 +155,15 @@ async function ensureScannerDetector_(){
   return SCAN_DETECTOR;
 }
 async function startCodeScanner(){
-  if(BUSY||SCANNING||!SCANNER_ALLOWED)return;
+  if(BUSY||SCANNING||SCAN_COOLDOWN||!SCANNER_ALLOWED)return;
   try{
     const detector=await ensureScannerDetector_();
     if(!STREAM)await startCamera(true);
     if(!STREAM)throw new Error('Camera is not ready for scanning.');
     SCANNING=true;
+    setScanOverlay_(true);
     q('scanBtn').textContent='Scanning…';
-    setMsg('Point the camera at the employee QR code or barcode.','ok');
+    setMsg('Scanning QR / Barcode…','ok');
     const loop=async()=>{
       if(!SCANNING)return;
       try{
@@ -131,8 +172,9 @@ async function startCodeScanner(){
           const raw=String(codes[0].rawValue||'').trim();
           if(raw){
             stopCodeScanner_();
+            setScanOverlay_(false);
             q('employeeId').value=raw;
-            setMsg('Code detected: '+raw,'ok');
+            setMsg('Code detected. Saving attendance…','ok');
             await processAttendance('SCANNER');
             return;
           }
@@ -148,6 +190,7 @@ async function startCodeScanner(){
 }
 function stopCodeScanner_(){
   SCANNING=false;
+  setScanOverlay_(false);
   if(SCAN_RAF)cancelAnimationFrame(SCAN_RAF);
   SCAN_RAF=0;
   if(q('scanBtn'))q('scanBtn').textContent='Scan QR / Barcode';
@@ -161,7 +204,7 @@ function capturePhoto(){
   return c.toDataURL('image/jpeg',.52);
 }
 async function processAttendance(inputMethod){
-  if(BUSY)return;
+  if(BUSY||SCAN_COOLDOWN)return;
   inputMethod=String(inputMethod||'MANUAL_ID').toUpperCase();
   if(inputMethod==='SCANNER'&&!SCANNER_ALLOWED)return setMsg('QR / Barcode Scanner is not authorized for this logger.','bad');
   if(inputMethod!=='SCANNER'&&!MANUAL_ID_ALLOWED)return setMsg('Manual Employee ID entry is not authorized for this logger.','bad');
@@ -210,6 +253,7 @@ async function processAttendance(inputMethod){
 
     setMsg('✓ '+punch+' RECORDED · '+r.employeeName+' · '+r.timestamp,'ok');
     q('attendanceState').textContent=punch==='IN'?'TIME IN recorded successfully.':'TIME OUT recorded successfully.';
+    if(inputMethod==='SCANNER')showScanSuccess_(r);
 
     const bp=r.performance||{},cp=r.clientPerformance||{};
     q('perfDiag').textContent=[
@@ -247,12 +291,13 @@ async function processAttendance(inputMethod){
   }catch(e){
     setMsg(e.message||String(e),'bad');
   }finally{
-    BUSY=false;setInputBusy_(false);hideLoading();q('employeeId').focus();
+    BUSY=false;setInputBusy_(false);hideLoading();
+    if(!SCAN_COOLDOWN&&MANUAL_ID_ALLOWED)q('employeeId').focus();
   }
 }
 
 window.addEventListener('load',()=>{if(window.opener)window.opener.postMessage({type:'CAMERA_READY'},PARENT_ORIGIN);startCamera(false);q('employeeId').focus()});
-window.addEventListener('beforeunload',()=>{stopCodeScanner_();try{STREAM?.getTracks().forEach(t=>t.stop())}catch(e){}});
+window.addEventListener('beforeunload',()=>{hideScanSuccess_();stopCodeScanner_();try{STREAM?.getTracks().forEach(t=>t.stop())}catch(e){}});
 </script>
 </body>
 </html>
