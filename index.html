@@ -43,7 +43,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v66</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v68</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="scan-overlay" id="scanOverlay"><div class="scan-frame"><div class="scan-line"></div><div class="scan-caption">I-center ang QR / Barcode sa loob ng box</div></div></div><div class="scan-success" id="scanSuccess"><div class="scan-success-card"><div class="scan-success-icon">✓</div><div class="scan-success-title" id="scanSuccessTitle">TIME IN RECORDED</div><div class="scan-success-name" id="scanSuccessName">Employee</div><div class="scan-success-time" id="scanSuccessTime"></div></div></div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -59,8 +59,11 @@
 <script>
 const PARENT_ORIGIN='*';
 let STREAM=null,CURRENT=null,BUSY=false;
-let CAMERA_REQUIRED=true,MANUAL_ID_ALLOWED=true,SCANNER_ALLOWED=false,SCANNER_ONLY_REQUEST=false,SCANNING=false,SCAN_DETECTOR=null,SCAN_RAF=0,SCAN_COOLDOWN=false,SCAN_SUCCESS_TIMER=0;
-try{SCANNER_ONLY_REQUEST=new URLSearchParams(location.search).get('scanner')==='1'}catch(_e){}
+let CAMERA_REQUIRED=true,MANUAL_ID_ALLOWED=true,SCANNER_ALLOWED=false,CAMERA_METHOD='photo',SCANNING=false,SCAN_DETECTOR=null,SCAN_RAF=0,SCAN_COOLDOWN=false,SCAN_SUCCESS_TIMER=0;
+try{
+  const p=new URLSearchParams(location.search),m=String(p.get('method')||'').toLowerCase();
+  CAMERA_METHOD=(m==='scanner'||m==='manual'||m==='photo')?m:(p.get('scanner')==='1'?'scanner':'photo');
+}catch(_e){}
 const requests=new Map();
 function q(id){return document.getElementById(id)}
 function setMsg(t,type){q('msg').textContent=t||'';q('msg').className='msg '+(type||'')}
@@ -86,13 +89,14 @@ function showScanSuccess_(r){
     q('employeeId').value='';
     resetEmployee();
     setMsg('Ready to scan the next employee.','ok');
-    if(SCANNER_ONLY_REQUEST&&SCANNER_ALLOWED&&!BUSY)startCodeScanner();
+    if(CAMERA_METHOD==='scanner'&&SCANNER_ALLOWED&&!BUSY)startCodeScanner();
   },3000);
 }
 function resetEmployee(){CURRENT=null;q('employeeCard').style.display='none'}
 function setInputBusy_(busy){
-  q('employeeId').disabled=!!busy||!MANUAL_ID_ALLOWED;
-  q('processBtn').disabled=!!busy||!MANUAL_ID_ALLOWED;
+  const idEntryAllowed=CAMERA_METHOD==='photo'||MANUAL_ID_ALLOWED;
+  q('employeeId').disabled=!!busy||!idEntryAllowed;
+  q('processBtn').disabled=!!busy||!idEntryAllowed;
   q('scanBtn').disabled=!!busy||SCAN_COOLDOWN||!SCANNER_ALLOWED;
 }
 function requestParent(type,payload){
@@ -114,11 +118,14 @@ window.addEventListener('message',event=>{
     q('loggerName').textContent=logger;
     q('branchLine').textContent='Branch: '+branch;
     q('cameraBranch').textContent='Branch: '+branch;
-    q('manualIdRow').style.display=MANUAL_ID_ALLOWED?'grid':'none';
-    q('scanBtn').classList.toggle('show',SCANNER_ALLOWED);
-    q('scanBtn').disabled=!SCANNER_ALLOWED;
-    document.title=(SCANNER_ONLY_REQUEST?'Attendance Scanner':'Attendance Camera')+' · '+branch;
-    if(SCANNER_ONLY_REQUEST&&SCANNER_ALLOWED)setTimeout(startCodeScanner,250);
+    const manualMode=(CAMERA_METHOD==='manual'||CAMERA_METHOD==='photo');
+    const scannerMode=CAMERA_METHOD==='scanner';
+    q('manualIdRow').style.display=(CAMERA_METHOD==='photo'||(manualMode&&MANUAL_ID_ALLOWED))?'grid':'none';
+    q('scanBtn').classList.toggle('show',scannerMode&&SCANNER_ALLOWED);
+    q('scanBtn').disabled=!(scannerMode&&SCANNER_ALLOWED);
+    q('loggerName').textContent=logger+' · '+(scannerMode?'QR / Barcode':CAMERA_METHOD==='manual'?'Employee ID':'Photo Attendance');
+    document.title=(scannerMode?'Attendance Scanner':'Attendance Camera')+' · '+branch;
+    if(scannerMode&&SCANNER_ALLOWED)setTimeout(startCodeScanner,250);
     return;
   }
   if(m.type==='LOOKUP_RESULT'||m.type==='SUBMIT_RESULT'){
@@ -131,9 +138,14 @@ async function startCamera(manual){
   try{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Camera API is not available in this browser.');
     if(STREAM)STREAM.getTracks().forEach(t=>t.stop());
-    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:SCANNER_ONLY_REQUEST?'environment':'user',width:{ideal:960},height:{ideal:540}},audio:false});
+    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:CAMERA_METHOD==='scanner'?'environment':'user',width:{ideal:960},height:{ideal:540}},audio:false});
     const video=q('video');video.srcObject=STREAM;video.onloadedmetadata=()=>{try{video.play()}catch(_e){}};
-    q('cameraState').textContent='Camera ready';q('cameraBadge').textContent='Ready';setMsg(SCANNER_ONLY_REQUEST?'Camera ready. Scan an employee QR code or barcode.':'Camera ready. Enter Employee ID or use Scan QR / Barcode.','ok');
+    q('cameraState').textContent='Camera ready';q('cameraBadge').textContent='Ready';
+    setMsg(CAMERA_METHOD==='scanner'
+      ?'Camera ready. Scan an employee QR code or barcode.'
+      :CAMERA_METHOD==='manual'
+        ?'Camera ready. Enter Employee ID, then capture attendance.'
+        :'Camera ready. Enter Employee ID for Photo Attendance.','ok');
   }catch(e){
     q('cameraState').textContent='Camera unavailable';q('cameraBadge').textContent='Permission';q('permissionPanel').style.display='flex';
     let text='Tap “Allow Camera” and approve the browser camera permission.';
@@ -207,7 +219,7 @@ async function processAttendance(inputMethod){
   if(BUSY||SCAN_COOLDOWN)return;
   inputMethod=String(inputMethod||'MANUAL_ID').toUpperCase();
   if(inputMethod==='SCANNER'&&!SCANNER_ALLOWED)return setMsg('QR / Barcode Scanner is not authorized for this logger.','bad');
-  if(inputMethod!=='SCANNER'&&!MANUAL_ID_ALLOWED)return setMsg('Manual Employee ID entry is not authorized for this logger.','bad');
+  if(CAMERA_METHOD!=='photo'&&inputMethod!=='SCANNER'&&!MANUAL_ID_ALLOWED)return setMsg('Manual Employee ID entry is not authorized for this logger.','bad');
   stopCodeScanner_();
   const fullStarted=performance.now();
   const id=q('employeeId').value.trim();
@@ -238,16 +250,23 @@ async function processAttendance(inputMethod){
     }
     if(punch!=='IN'&&punch!=='OUT')throw new Error('Unable to determine TIME IN / TIME OUT.');
 
-    showLoading((CAMERA_REQUIRED?'Capturing and saving ':'Saving ')+punch+'…');
+    const requiresPhoto=CAMERA_METHOD==='photo';
+    showLoading((requiresPhoto?'Capturing and saving ':'Saving ')+punch+'…');
     let dataUrl='',captureMs=0;
-    if(CAMERA_REQUIRED){
+    if(requiresPhoto){
       const captureStarted=performance.now();
       dataUrl=capturePhoto();
       captureMs=Math.round(performance.now()-captureStarted);
     }
 
     const submitStarted=performance.now();
-    const r=await requestParent('SUBMIT_PUNCH',{employeeId:lookup.employee.employeeId,punch,dataUrl,inputMethod});
+    const r=await requestParent('SUBMIT_PUNCH',{
+      employeeId:lookup.employee.employeeId,
+      punch,
+      dataUrl,
+      inputMethod,
+      attendanceMethod:requiresPhoto?'PHOTO':(CAMERA_METHOD==='scanner'?'SCANNER':'MANUAL')
+    });
     const submitTotalMs=Math.round(performance.now()-submitStarted);
     const totalMs=Math.round(performance.now()-fullStarted);
 
