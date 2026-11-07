@@ -5,30 +5,68 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Attendance Logger</title>
 <style>
-:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e1ea;--brand:#0f4c5c;--bad:#b42318;--ok:#14804a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text)}.app{max-width:560px;margin:auto;padding:12px}.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.title{font-size:20px;font-weight:800}.sub,.hint{font-size:12px;color:var(--muted)}.badge{font-size:11px;font-weight:800;border:1px solid var(--line);background:white;border-radius:999px;padding:7px 10px}.card{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}.video{position:relative;background:#000;border-radius:14px;overflow:hidden;height:54vh;min-height:320px}.video video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.branch{position:absolute;right:10px;top:10px;background:rgba(15,76,92,.9);color:white;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800}.row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font-size:16px}button{border:0;border-radius:12px;padding:13px 16px;font-weight:800;background:var(--brand);color:#fff}.secondary{background:#eef4f6;color:var(--brand)}.msg{margin-top:10px;font-size:12px;min-height:18px}.bad{color:var(--bad)}.ok{color:var(--ok)}.overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}.modal{background:#fff;border-radius:16px;padding:18px;width:min(420px,100%)}.modal h3{margin:0 0 8px}.modal label{display:block;font-size:11px;font-weight:800;margin-top:12px;margin-bottom:5px}.loading{position:fixed;inset:0;background:rgba(255,255,255,.62);display:none;align-items:center;justify-content:center;z-index:30}.loading div{background:white;border:1px solid var(--line);border-radius:14px;padding:14px 18px;font-weight:800}
+:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e1ea;--brand:#0f4c5c;--bad:#b42318;--ok:#14804a;--soft:#eef4f6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:var(--text)}
+.app{max-width:720px;margin:auto;padding:12px}.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.title{font-size:20px;font-weight:800}.sub,.hint{font-size:12px;color:var(--muted)}.badge{font-size:11px;font-weight:800;border:1px solid var(--line);background:white;border-radius:999px;padding:7px 10px}
+.card{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.methods{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.method{display:none;text-align:left;background:#fff;color:var(--text);border:1px solid var(--line);padding:14px;border-radius:14px;min-height:128px;cursor:pointer}
+.method.show{display:block}.method.active{border:2px solid var(--brand);background:var(--soft)}.method:disabled{opacity:.55;cursor:not-allowed}
+.mi{font-size:25px}.mt{font-size:14px;font-weight:800;margin-top:8px}.mn{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.35}.mb{display:inline-block;font-size:9px;font-weight:800;margin-top:8px;border-radius:999px;padding:4px 7px;background:var(--soft);color:var(--brand)}
+.panel{display:none;margin-top:12px}.panel.show{display:block}
+.video{position:relative;background:#000;border-radius:14px;overflow:hidden;height:48vh;min-height:300px}.video video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.branch{position:absolute;right:10px;top:10px;background:rgba(15,76,92,.9);color:white;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}input{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font-size:16px}
+button.action{border:0;border-radius:12px;padding:13px 16px;font-weight:800;background:var(--brand);color:#fff}.secondary{background:var(--soft)!important;color:var(--brand)!important}
+.msg{margin-top:10px;font-size:12px;min-height:18px}.bad{color:var(--bad)}.ok{color:var(--ok)}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;padding:20px;z-index:20}.modal{background:#fff;border-radius:16px;padding:18px;width:min(420px,100%)}.modal h3{margin:0 0 8px}.modal label{display:block;font-size:11px;font-weight:800;margin-top:12px;margin-bottom:5px}
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.62);display:none;align-items:center;justify-content:center;z-index:30}.loading div{background:white;border:1px solid var(--line);border-radius:14px;padding:14px 18px;font-weight:800}
+.scanbox{position:absolute;inset:22%;border:3px solid rgba(255,255,255,.85);border-radius:16px;display:none}.scanbox.show{display:block}
+@media(max-width:620px){.methods{grid-template-columns:1fr}.method{min-height:auto}.video{height:46vh;min-height:280px}}
 </style>
 </head>
 <body>
 <div class="loading" id="loading"><div id="loadingText">Loading…</div></div>
-<div class="overlay" id="activate"><div class="modal"><h3>Activate Logger Device</h3><div class="hint">Enter the activation code generated by the administrator.</div><label>Device Name</label><input id="deviceLabel" placeholder="e.g. Front Desk Phone"><label>Activation Code</label><input id="activationCode" inputmode="numeric" maxlength="6" placeholder="6-digit code"><div class="row"><button onclick="activateDevice()">Activate</button></div><div class="msg" id="activateMsg"></div></div></div>
+<div class="overlay" id="activate"><div class="modal"><h3>Activate Logger Device</h3><div class="hint">Enter the activation code generated by the administrator.</div><label>Device Name</label><input id="deviceLabel" placeholder="e.g. Front Desk Phone"><label>Activation Code</label><input id="activationCode" inputmode="numeric" maxlength="6" placeholder="6-digit code"><div class="row"><button class="action" onclick="activateDevice()">Activate</button></div><div class="msg" id="activateMsg"></div></div></div>
+
 <div class="app">
-  <div class="head"><div><div class="title">Attendance Logger</div><div class="sub" id="loggerName">Connecting…</div></div><div class="badge">Web Logger v1</div></div>
+  <div class="head"><div><div class="title">Attendance Logger</div><div class="sub" id="loggerName">Connecting…</div></div><div class="badge">Web Logger v2</div></div>
   <div class="card">
-    <div class="video"><video id="video" autoplay playsinline muted></video><div class="branch" id="branch">Branch: —</div></div>
-    <div class="row"><input id="employeeId" autocomplete="off" placeholder="Employee ID" onkeydown="if(event.key==='Enter')record('PHOTO')"><button onclick="record('PHOTO')">Photo</button></div>
-    <div class="row"><button class="secondary" onclick="record('MANUAL')">Employee ID Only</button></div>
+    <div class="sub"><b>Attendance Method</b><br>Choose how you want to record attendance. Only methods authorized by the admin are shown.</div>
+    <div class="methods">
+      <button class="method" id="methodPhoto" onclick="selectMethod('PHOTO')">
+        <div class="mi">📷</div><div class="mt">Photo Attendance</div><div class="mn">Enter Employee ID and capture an attendance photo.</div><div class="mb">PHOTO PROOF</div>
+      </button>
+      <button class="method" id="methodManual" onclick="selectMethod('MANUAL')">
+        <div class="mi">⌨</div><div class="mt">Employee ID</div><div class="mn">Enter Employee ID only. No attendance photo is captured.</div><div class="mb">MANUAL ID</div>
+      </button>
+      <button class="method" id="methodScanner" onclick="selectMethod('SCANNER')">
+        <div class="mi">▣</div><div class="mt">QR / Barcode</div><div class="mn">Use the camera to scan the employee code.</div><div class="mb">CAMERA SCANNER</div>
+      </button>
+    </div>
+
+    <div class="panel" id="workPanel">
+      <div class="video" id="videoWrap">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="branch" id="branch">Branch: —</div>
+        <div class="scanbox" id="scanbox"></div>
+      </div>
+      <div class="row" id="idRow"><input id="employeeId" autocomplete="off" placeholder="Employee ID"><button class="action" id="recordBtn" onclick="recordSelected()">Record</button></div>
+      <div class="hint" id="modeHint"></div>
+    </div>
+
     <div class="msg" id="msg"></div>
-    <div class="hint">TIME IN / TIME OUT is selected automatically. Photo mode captures a camera image; ID Only follows logger authorization.</div>
   </div>
 </div>
 <canvas id="canvas" style="display:none"></canvas>
+
 <script>
 const qs=new URLSearchParams(location.search);
 const TOKEN=qs.get('token')||'';
 const KEY_NAME='APS_PUBLIC_LOGGER_DEVICE_KEY';
 let DEVICE_KEY=localStorage.getItem(KEY_NAME)||'';
-let CONFIG=null,STREAM=null,BUSY=false;
+let CONFIG=null,STREAM=null,BUSY=false,SELECTED='',SCAN_TIMER=null,SCANNING=false;
 if(!DEVICE_KEY){DEVICE_KEY=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random());localStorage.setItem(KEY_NAME,DEVICE_KEY)}
 const q=id=>document.getElementById(id);
 function msg(t,bad){q('msg').textContent=t||'';q('msg').className='msg '+(bad?'bad':'ok')}
@@ -40,9 +78,51 @@ async function api(action,payload={}){
   return j;
 }
 async function startCamera(){
-  try{STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960},height:{ideal:720}},audio:false});q('video').srcObject=STREAM}
-  catch(e){msg('Camera unavailable. Allow camera permission or use Employee ID Only.',true)}
+  if(STREAM)return true;
+  try{
+    STREAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960},height:{ideal:720}},audio:false});
+    q('video').srcObject=STREAM;return true;
+  }catch(e){msg('Camera unavailable. Allow camera permission or choose Employee ID.',true);return false}
 }
+function applyConfig(){
+  const photo=CONFIG&&CONFIG.cameraRequired!==false;
+  const manual=!CONFIG||CONFIG.manualIdAllowed!==false;
+  const scanner=!!(CONFIG&&CONFIG.scannerAllowed);
+  q('methodPhoto').classList.toggle('show',photo);
+  q('methodManual').classList.toggle('show',manual);
+  q('methodScanner').classList.toggle('show',scanner);
+  if(!SELECTED){
+    if(photo)selectMethod('PHOTO');
+    else if(manual)selectMethod('MANUAL');
+    else if(scanner)selectMethod('SCANNER');
+  }else{
+    const allowed=(SELECTED==='PHOTO'&&photo)||(SELECTED==='MANUAL'&&manual)||(SELECTED==='SCANNER'&&scanner);
+    if(!allowed){SELECTED='';applyConfig()}
+  }
+}
+async function selectMethod(mode){
+  stopScanner();
+  SELECTED=mode;
+  ['PHOTO','MANUAL','SCANNER'].forEach(m=>q('method'+(m==='PHOTO'?'Photo':m==='MANUAL'?'Manual':'Scanner')).classList.toggle('active',m===mode));
+  q('workPanel').classList.add('show');
+  q('scanbox').classList.toggle('show',mode==='SCANNER');
+  q('idRow').style.display=mode==='SCANNER'?'none':'grid';
+  if(mode==='PHOTO'){
+    q('modeHint').textContent='Enter Employee ID, then record attendance with photo proof.';
+    q('recordBtn').textContent='Take Photo';
+    await startCamera();
+    setTimeout(()=>q('employeeId').focus(),50);
+  }else if(mode==='MANUAL'){
+    q('modeHint').textContent='Enter Employee ID only. No photo will be captured.';
+    q('recordBtn').textContent='Record';
+    setTimeout(()=>q('employeeId').focus(),50);
+  }else{
+    q('modeHint').textContent='Point the camera at the employee QR code or barcode.';
+    const ok=await startCamera();
+    if(ok)startScanner();
+  }
+}
+q('employeeId').addEventListener('keydown',e=>{if(e.key==='Enter'&&SELECTED!=='SCANNER')recordSelected()});
 function capture(){
   if(!STREAM)throw new Error('Camera is not ready.');
   const v=q('video'),c=q('canvas'),max=520,s=Math.min(1,max/(v.videoWidth||720),max/(v.videoHeight||960));
@@ -59,23 +139,27 @@ async function boot(){
     q('loggerName').textContent=CONFIG.loggerName||'Attendance Logger';
     q('branch').textContent='Branch: '+(CONFIG.branch||'Unassigned');
     if(r.status!=='Registered')q('activate').style.display='flex';
+    else applyConfig();
   }catch(e){msg(e.message,true)}
   finally{loading(false)}
-  startCamera();
 }
 async function activateDevice(){
   q('activateMsg').textContent='Activating…';
   try{
     const r=await api('activate',{activationCode:q('activationCode').value,deviceLabel:q('deviceLabel').value,browserInfo:navigator.userAgent});
-    CONFIG=r.config||CONFIG;q('activate').style.display='none';msg('Device activated.','');
+    CONFIG=r.config||CONFIG;
+    q('loggerName').textContent=CONFIG.loggerName||'Attendance Logger';
+    q('branch').textContent='Branch: '+(CONFIG.branch||'Unassigned');
+    q('activate').style.display='none';applyConfig();msg('Device activated.',false);
   }catch(e){q('activateMsg').textContent=e.message;q('activateMsg').className='msg bad'}
 }
-async function record(mode){
+async function recordSelected(employeeIdOverride){
   if(BUSY)return;
-  const employeeId=q('employeeId').value.trim();
+  const employeeId=String(employeeIdOverride||q('employeeId').value||'').trim();
   if(!employeeId)return msg('Enter Employee ID.',true);
-  if(mode==='MANUAL'&&CONFIG&&CONFIG.manualIdAllowed===false)return msg('Employee ID Only is disabled for this logger.',true);
-  if(mode==='PHOTO'&&CONFIG&&CONFIG.cameraRequired===false)return msg('Photo Attendance is disabled for this logger.',true);
+  if(SELECTED==='MANUAL'&&CONFIG&&CONFIG.manualIdAllowed===false)return msg('Employee ID is disabled for this logger.',true);
+  if(SELECTED==='PHOTO'&&CONFIG&&CONFIG.cameraRequired===false)return msg('Photo Attendance is disabled for this logger.',true);
+  if(SELECTED==='SCANNER'&&CONFIG&&!CONFIG.scannerAllowed)return msg('QR / Barcode is disabled for this logger.',true);
   BUSY=true;loading(true,'Checking attendance…');
   try{
     const l=await api('lookup',{employeeId});
@@ -83,11 +167,40 @@ async function record(mode){
     if(punch==='COMPLETE')throw new Error('Attendance is already complete for today.');
     if(punch!=='IN'&&punch!=='OUT')throw new Error('Unable to determine TIME IN / TIME OUT.');
     loading(true,'Saving '+punch+'…');
-    const photoDataUrl=mode==='PHOTO'?capture():'';
-    const r=await api('submit',{employeeId,punch,photoDataUrl,inputMethod:'MANUAL_ID',attendanceMethod:mode==='PHOTO'?'PHOTO':'MANUAL'});
-    msg('✓ '+r.punch+' RECORDED · '+r.employeeName+' · '+r.timestamp,false);q('employeeId').value='';
-  }catch(e){msg(e.message,true)}
+    const photoDataUrl=SELECTED==='PHOTO'?capture():'';
+    const inputMethod=SELECTED==='SCANNER'?'SCANNER':'MANUAL_ID';
+    const r=await api('submit',{employeeId,punch,photoDataUrl,inputMethod,attendanceMethod:SELECTED});
+    msg('✓ '+r.punch+' RECORDED · '+r.employeeName+' · '+r.timestamp,false);
+    q('employeeId').value='';
+    if(SELECTED==='SCANNER'){stopScanner();setTimeout(()=>startScanner(),1200)}
+  }catch(e){msg(e.message,true);if(SELECTED==='SCANNER'){stopScanner();setTimeout(()=>startScanner(),1200)}}
   finally{BUSY=false;loading(false)}
+}
+function stopScanner(){SCANNING=false;if(SCAN_TIMER){clearTimeout(SCAN_TIMER);SCAN_TIMER=null}}
+async function startScanner(){
+  stopScanner();
+  if(!('BarcodeDetector' in window)){
+    msg('QR / Barcode scanning is not supported by this browser. Use Chrome/Android or another authorized method.',true);
+    return;
+  }
+  let detector;
+  try{
+    const formats=await BarcodeDetector.getSupportedFormats();
+    detector=new BarcodeDetector({formats:formats.filter(x=>['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e'].includes(x))});
+  }catch(e){msg('Unable to start QR / Barcode scanner.',true);return}
+  SCANNING=true;
+  const scan=async()=>{
+    if(!SCANNING||SELECTED!=='SCANNER')return;
+    try{
+      const codes=await detector.detect(q('video'));
+      if(codes&&codes.length){
+        const value=String(codes[0].rawValue||'').trim();
+        if(value){stopScanner();await recordSelected(value);return}
+      }
+    }catch(_e){}
+    SCAN_TIMER=setTimeout(scan,250);
+  };
+  scan();
 }
 boot();
 </script>
