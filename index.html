@@ -43,7 +43,7 @@
 <body>
 <div class="loading" id="loading"><div class="loading-card" id="loadingText">Processing…</div></div>
 <div class="app">
-  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v68</div></div></div>
+  <div class="head"><div class="brand"><div class="title">Attendance Camera</div><div class="sub" id="loggerName">Logger 4</div><div class="branch-line" id="branchLine">Branch: Waiting for logger…</div></div><div style="display:flex;align-items:center;gap:7px"><div class="badge" id="cameraBadge">Camera</div><div class="badge" style="color:#667085">v69</div></div></div>
   <div class="camera-card"><div class="video-wrap"><video id="video" autoplay playsinline muted></video><div class="camera-state" id="cameraState">Waiting for camera…</div><div class="camera-branch" id="cameraBranch">Branch: —</div><div class="scan-overlay" id="scanOverlay"><div class="scan-frame"><div class="scan-line"></div><div class="scan-caption">I-center ang QR / Barcode sa loob ng box</div></div></div><div class="scan-success" id="scanSuccess"><div class="scan-success-card"><div class="scan-success-icon">✓</div><div class="scan-success-title" id="scanSuccessTitle">TIME IN RECORDED</div><div class="scan-success-name" id="scanSuccessName">Employee</div><div class="scan-success-time" id="scanSuccessTime"></div></div></div><div class="perm" id="permissionPanel"><div class="perm-card"><div class="perm-title">Camera permission needed</div><div class="perm-text" id="permissionText">Tap “Allow Camera” below. Your browser should then ask permission to use the camera.</div><button class="check" onclick="startCamera(true)">Allow Camera</button></div></div></div></div>
   <canvas id="canvas"></canvas>
   <div class="panel">
@@ -58,11 +58,13 @@
 </div>
 <script>
 const PARENT_ORIGIN='*';
+let BRIDGE_FRAME=null,BRIDGE_READY=false,BRIDGE_URL='';
 let STREAM=null,CURRENT=null,BUSY=false;
 let CAMERA_REQUIRED=true,MANUAL_ID_ALLOWED=true,SCANNER_ALLOWED=false,CAMERA_METHOD='photo',SCANNING=false,SCAN_DETECTOR=null,SCAN_RAF=0,SCAN_COOLDOWN=false,SCAN_SUCCESS_TIMER=0;
 try{
   const p=new URLSearchParams(location.search),m=String(p.get('method')||'').toLowerCase();
   CAMERA_METHOD=(m==='scanner'||m==='manual'||m==='photo')?m:(p.get('scanner')==='1'?'scanner':'photo');
+  BRIDGE_URL=String(p.get('bridge')||'').trim();
 }catch(_e){}
 const requests=new Map();
 function q(id){return document.getElementById(id)}
@@ -99,18 +101,31 @@ function setInputBusy_(busy){
   q('processBtn').disabled=!!busy||!idEntryAllowed;
   q('scanBtn').disabled=!!busy||SCAN_COOLDOWN||!SCANNER_ALLOWED;
 }
-function requestParent(type,payload){
+function requestBackend(type,payload){
   return new Promise((resolve,reject)=>{
     const requestId=Date.now()+'-'+Math.random().toString(36).slice(2);
     const timer=setTimeout(()=>{requests.delete(requestId);reject(new Error('Saving is taking longer than expected. Please check the attendance list before trying again.'))},35000);
     requests.set(requestId,{resolve,reject,timer});
-    if(!window.opener){clearTimeout(timer);requests.delete(requestId);reject(new Error('Attendance logger window is not available.'));return}
-    window.opener.postMessage({type,requestId,...payload},PARENT_ORIGIN);
+
+    if(BRIDGE_READY&&BRIDGE_FRAME&&BRIDGE_FRAME.contentWindow){
+      const bridgeType=type==='LOOKUP_EMPLOYEE'?'BRIDGE_LOOKUP':'BRIDGE_SUBMIT';
+      const message=bridgeType==='BRIDGE_LOOKUP'
+        ?{type:bridgeType,requestId,employeeId:payload.employeeId}
+        :{type:bridgeType,requestId,payload:payload};
+      BRIDGE_FRAME.contentWindow.postMessage(message,'*');
+      return;
+    }
+
+    if(window.opener){
+      window.opener.postMessage({type,requestId,...payload},PARENT_ORIGIN);
+      return;
+    }
+
+    clearTimeout(timer);requests.delete(requestId);
+    reject(new Error(BRIDGE_URL?'Secure logger session is still connecting. Please wait a moment and try again.':'Camera session is incomplete. Return to the Attendance Logger and open Photo Attendance again.'));
   });
 }
-window.addEventListener('message',event=>{
-  const m=event.data||{};
-  if(m.type==='LOGGER_CONTEXT'){
+function applyLoggerContext_(m){
     const logger=m.loggerName||'Logger 4',branch=m.branch||'Unassigned Branch';
     CAMERA_REQUIRED=m.cameraRequired!==false;
     MANUAL_ID_ALLOWED=m.manualIdAllowed!==false;
@@ -126,6 +141,46 @@ window.addEventListener('message',event=>{
     q('loggerName').textContent=logger+' · '+(scannerMode?'QR / Barcode':CAMERA_METHOD==='manual'?'Employee ID':'Photo Attendance');
     document.title=(scannerMode?'Attendance Scanner':'Attendance Camera')+' · '+branch;
     if(scannerMode&&SCANNER_ALLOWED)setTimeout(startCodeScanner,250);
+}
+
+function initBridge_(){
+  if(!BRIDGE_URL)return;
+  try{
+    const f=document.createElement('iframe');
+    f.style.display='none';
+    f.setAttribute('aria-hidden','true');
+    f.src=BRIDGE_URL;
+    document.body.appendChild(f);
+    BRIDGE_FRAME=f;
+    setMsg('Connecting secure logger session…','warn');
+  }catch(e){
+    setMsg('Unable to start secure logger session. Return to the Attendance Logger and try again.','bad');
+  }
+}
+
+window.addEventListener('message',event=>{
+  const m=event.data||{};
+
+  if(m.type==='BRIDGE_CONTEXT'&&BRIDGE_FRAME&&event.source===BRIDGE_FRAME.contentWindow){
+    if(m.ok){
+      BRIDGE_READY=true;
+      applyLoggerContext_(m.context||{});
+      setMsg('Secure logger session connected.','ok');
+    }else{
+      BRIDGE_READY=false;
+      setMsg(m.message||'Secure logger session could not be connected.','bad');
+    }
+    return;
+  }
+
+  if(m.type==='BRIDGE_RESULT'&&BRIDGE_FRAME&&event.source===BRIDGE_FRAME.contentWindow){
+    const p=requests.get(m.requestId);if(!p)return;clearTimeout(p.timer);requests.delete(m.requestId);
+    if(m.ok)p.resolve(m.result||m);else p.reject(new Error(m.message||'Request failed.'));
+    return;
+  }
+
+  if(m.type==='LOGGER_CONTEXT'){
+    applyLoggerContext_(m);
     return;
   }
   if(m.type==='LOOKUP_RESULT'||m.type==='SUBMIT_RESULT'){
@@ -230,7 +285,7 @@ async function processAttendance(inputMethod){
   BUSY=true;setInputBusy_(true);showLoading('Checking attendance…');
   try{
     const lookupStarted=performance.now();
-    const lookup=await requestParent('LOOKUP_EMPLOYEE',{employeeId:id});
+    const lookup=await requestBackend('LOOKUP_EMPLOYEE',{employeeId:id});
     const lookupTotalMs=Math.round(performance.now()-lookupStarted);
     const lookupSource=lookup&&lookup.performance&&lookup.performance.localCache?'LOCAL CACHE':'SERVER';
 
@@ -260,7 +315,7 @@ async function processAttendance(inputMethod){
     }
 
     const submitStarted=performance.now();
-    const r=await requestParent('SUBMIT_PUNCH',{
+    const r=await requestBackend('SUBMIT_PUNCH',{
       employeeId:lookup.employee.employeeId,
       punch,
       dataUrl,
@@ -315,7 +370,7 @@ async function processAttendance(inputMethod){
   }
 }
 
-window.addEventListener('load',()=>{if(window.opener)window.opener.postMessage({type:'CAMERA_READY'},PARENT_ORIGIN);startCamera(false);q('employeeId').focus()});
+window.addEventListener('load',()=>{initBridge_();if(window.opener)window.opener.postMessage({type:'CAMERA_READY'},PARENT_ORIGIN);startCamera(false);q('employeeId').focus()});
 window.addEventListener('beforeunload',()=>{hideScanSuccess_();stopCodeScanner_();try{STREAM?.getTracks().forEach(t=>t.stop())}catch(e){}});
 </script>
 </body>
